@@ -2,6 +2,12 @@ import asyncio
 from datetime import datetime, timedelta
 from storage import get_user
 from keyboards import tasks_keyboard
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from datetime import datetime
+import pytz  # для часового пояса
+
+scheduler = AsyncIOScheduler(timezone=pytz.timezone("Europe/Moscow"))  # твоя зона
 
 
 # ─────────────────────────────
@@ -24,31 +30,26 @@ def plan_reminder_task(when: datetime, fn):
 # 2. Напоминание о задачах
 # ─────────────────────────────
 async def send_task_reminder(bot, user_id, list_id):
-    """Отправляет пользователю список дел и фокус дня."""
     u = get_user(user_id)
     lst = u.get("lists", {}).get(list_id)
     if not lst:
         return
-
     tasks = lst.get("tasks", [])
     focus = u.get("focus", "💡 Сегодня нет фокуса")
-
     text = f"📌 <b>Фокус дня:</b> {focus}\n\n📝 <b>Список дел:</b>"
     await bot.send_message(user_id, text, reply_markup=tasks_keyboard(list_id, tasks))
 
 
 def schedule_tasks_reminder(bot, user_id, list_id, focus, time_str):
-    """Планирует отправку списка задач в указанное время (ЧЧ:ММ)."""
     h, m = map(int, time_str.split(":"))
-    now = datetime.now()
-    when = now.replace(hour=h, minute=m, second=0, microsecond=0)
-    if when <= now:
-        when += timedelta(days=1)
-
-    async def send():
-        await send_task_reminder(bot, user_id, list_id)
-
-    plan_reminder_task(when, send)
+    scheduler.add_job(
+        send_task_reminder,
+        trigger=CronTrigger(hour=h, minute=m),
+        args=[bot, user_id, list_id],
+        id=f"task_{user_id}_{list_id}",  # чтобы можно было перезаписать
+        replace_existing=True,
+    )
+    scheduler.start()
 
 
 # ─────────────────────────────
