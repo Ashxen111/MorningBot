@@ -4,55 +4,25 @@ import os
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.client.default import DefaultBotProperties
-from dotenv import load_dotenv
-
 from handlers import router
-from scheduler import scheduler
+from dotenv import load_dotenv
+from scheduler import scheduler, restore_reminders
 
-
-# ─────────────────────────────
-# Настройка логирования
-# ─────────────────────────────
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
-
-# ─────────────────────────────
-# Загрузка переменных окружения
-# ─────────────────────────────
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 
-if not TOKEN:
-    raise ValueError("❌ BOT_TOKEN не найден в .env")
+logging.basicConfig(level=logging.INFO)
 
-
-# ─────────────────────────────
-# Инициализация бота и диспетчера
-# ─────────────────────────────
-bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+bot = Bot(token=TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher(storage=MemoryStorage())
 dp.include_router(router)
 
 
-# ─────────────────────────────
-# Основной запуск
-# ─────────────────────────────
 async def main():
-    logging.info("🚀 Бот запускается...")
-
-    # Запуск планировщика
-    if not scheduler.running:
-        scheduler.start()
-        logging.info("✅ Планировщик запущен")
-
-    # Запуск бота
+    scheduler.start()  # стартуем один раз
+    restore_reminders(bot)  # восстанавливаем все активные напоминания
     await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logging.info("🛑 Бот остановлен вручную")
+    asyncio.run(main())

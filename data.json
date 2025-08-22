@@ -1,6 +1,6 @@
 {
   "374798026": {
-    "focus": "паижь",
+    "focus": "привет",
     "tasks": [
       {
         "text": "ипрыекып",
@@ -13,7 +13,7 @@
     ],
     "reminder": "15:11",
     "wakeup": "10:00",
-    "state": "await_focus",
+    "state": "await_time",
     "lists": {
       "7cdb31c5-d867-428f-8349-23be54a4c5c5": {
         "tasks": [
@@ -67,9 +67,19 @@
         "tasks": [
           "иыт ыэеиотэ"
         ]
+      },
+      "30810688-8a39-4a3f-b3f9-c0feb0e2cc53": {
+        "tasks": [
+          "пкернгошщд"
+        ]
+      },
+      "b7f73a30-dd70-4df5-8ba6-db3d94eb2f9f": {
+        "tasks": [
+          "привет сегодня"
+        ]
       }
     },
-    "current_list": "440b14b2-43b9-4e7e-aca6-16655005a1ba"
+    "current_list": "b7f73a30-dd70-4df5-8ba6-db3d94eb2f9f"
   },
   "134452354": {
     "timezone": null,

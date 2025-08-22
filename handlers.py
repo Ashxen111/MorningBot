@@ -53,16 +53,15 @@ async def handle_text(message: Message):
     if state == "await_time":
         if not parse_hhmm(text):
             await message.answer("❌ Неверный формат. Введи время в формате ЧЧ:ММ.")
-            return
-        u = get_user(user_id)
-        list_id = u.get("current_list")
-        focus = u.get("focus")
-        schedule_tasks_reminder(message.bot, user_id, list_id, focus, text)
-        update_user(user_id, {"state": None})
-        await message.answer(
-            f"⏳ Отлично! Я напомню тебе о делах в <b>{text}</b>.\nТы всегда сможешь добавить новые задачи позже."
-        )
         return
+    u = get_user(user_id)
+    list_id = u.get("current_list")
+    schedule_tasks_reminder(message.bot, user_id, list_id, text)  # убрали focus
+    update_user(user_id, {"state": None})
+    await message.answer(
+        f"⏳ Отлично! Я напомню тебе о делах в <b>{text}</b>.\nТы всегда сможешь добавить новые задачи позже."
+    )
+    return
 
     if state and state.startswith("await_add:"):
         list_id = state.split(":")[1]
