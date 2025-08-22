@@ -1,33 +1,16 @@
 import asyncio
 from datetime import datetime, timedelta
-from storage import get_user
-from keyboards import tasks_keyboard
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime
-import pytz  # для часового пояса
+import pytz
+from storage import get_user, update_user, get_all_users
+from keyboards import tasks_keyboard
 
-scheduler = AsyncIOScheduler(timezone=pytz.timezone("Europe/Moscow"))  # твоя зона
-
-
-# ─────────────────────────────
-# 1. Универсальный планировщик задач
-# ─────────────────────────────
-async def schedule_at(when: datetime, coro):
-    """Ждём указанное время, затем выполняем короутину."""
-    delay = (when - datetime.now()).total_seconds()
-    if delay > 0:
-        await asyncio.sleep(delay)
-    await coro()
-
-
-def plan_reminder_task(when: datetime, fn):
-    """Создаёт задачу в event loop."""
-    asyncio.create_task(schedule_at(when, fn))
+scheduler = AsyncIOScheduler(timezone=pytz.timezone("Europe/Moscow"))
 
 
 # ─────────────────────────────
-# 2. Напоминание о задачах
+# Отправка напоминания
 # ─────────────────────────────
 async def send_task_reminder(bot, user_id, list_id):
     u = get_user(user_id)
@@ -40,23 +23,55 @@ async def send_task_reminder(bot, user_id, list_id):
     await bot.send_message(user_id, text, reply_markup=tasks_keyboard(list_id, tasks))
 
 
-def schedule_tasks_reminder(bot, user_id, list_id, focus, time_str):
+# ─────────────────────────────
+# Планирование напоминания
+# ─────────────────────────────
+def schedule_tasks_reminder(bot, user_id, list_id, time_str, save_to_json=True):
     h, m = map(int, time_str.split(":"))
+
+    # Сохраняем в JSON
+    if save_to_json:
+        user_data = get_user(user_id)
+        if "lists" not in user_data:
+            user_data["lists"] = {}
+        if list_id not in user_data["lists"]:
+            user_data["lists"][list_id] = {}
+        user_data["lists"][list_id]["reminder"] = time_str
+        update_user(user_id, user_data)
+
+    job_id = f"task_{user_id}_{list_id}"
+    if scheduler.get_job(job_id):
+        scheduler.remove_job(job_id)
+
     scheduler.add_job(
         send_task_reminder,
         trigger=CronTrigger(hour=h, minute=m),
         args=[bot, user_id, list_id],
-        id=f"task_{user_id}_{list_id}",  # чтобы можно было перезаписать
+        id=job_id,
         replace_existing=True,
     )
-    scheduler.start()
+    print(f"✅ Напоминание для {user_id} ({list_id}) на {time_str} запланировано")
 
 
 # ─────────────────────────────
-# 3. Планирование пробуждения
+# Восстановление всех напоминаний при старте
+# ─────────────────────────────
+def restore_reminders(bot):
+    users = get_all_users()
+    for user_id, u in users.items():
+        lists = u.get("lists", {})
+        for list_id, lst in lists.items():
+            time_str = lst.get("reminder")
+            if time_str:
+                schedule_tasks_reminder(
+                    bot, user_id, list_id, time_str, save_to_json=False
+                )
+
+
+# ─────────────────────────────
+# Планирование пробуждения
 # ─────────────────────────────
 def schedule_wakeup(bot, user_id, wake_time, hello_text_builder):
-    """Планирует отправку приветственного сообщения утром и устанавливает состояние."""
     h, m = map(int, wake_time.split(":"))
     now = datetime.now()
     when = now.replace(hour=h, minute=m, second=0, microsecond=0)
@@ -64,11 +79,14 @@ def schedule_wakeup(bot, user_id, wake_time, hello_text_builder):
         when += timedelta(days=1)
 
     async def send():
-        # Отправляем приветствие
         await bot.send_message(user_id, hello_text_builder())
-        # Устанавливаем состояние на ожидание фокуса
-        from storage import update_user
-
         update_user(user_id, {"state": "await_focus"})
 
-    plan_reminder_task(when, send)
+    asyncio.create_task(schedule_at(when, send))
+
+
+async def schedule_at(when: datetime, coro):
+    delay = (when - datetime.now()).total_seconds()
+    if delay > 0:
+        await asyncio.sleep(delay)
+    await coro()
