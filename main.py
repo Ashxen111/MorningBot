@@ -6,6 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from handlers import router
 from dotenv import load_dotenv
+from scheduler import scheduler
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
@@ -20,6 +21,7 @@ dp.include_router(router)
 
 
 async def main():
+    scheduler.start()  # запускаем планировщик ОДИН раз
     await dp.start_polling(bot)
 
 

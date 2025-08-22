@@ -4,10 +4,10 @@ from storage import get_user
 from keyboards import tasks_keyboard
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime
-import pytz  # для часового пояса
+import pytz
 
-scheduler = AsyncIOScheduler(timezone=pytz.timezone("Europe/Moscow"))  # твоя зона
+# Создаём один глобальный планировщик
+scheduler = AsyncIOScheduler(timezone=pytz.timezone("Europe/Moscow"))
 
 
 # ─────────────────────────────
@@ -46,10 +46,10 @@ def schedule_tasks_reminder(bot, user_id, list_id, focus, time_str):
         send_task_reminder,
         trigger=CronTrigger(hour=h, minute=m),
         args=[bot, user_id, list_id],
-        id=f"task_{user_id}_{list_id}",  # чтобы можно было перезаписать
+        id=f"task_{user_id}_{list_id}",
         replace_existing=True,
     )
-    scheduler.start()
+    print(f"✅ Добавлено напоминание для {user_id} в {time_str}")
 
 
 # ─────────────────────────────
@@ -64,9 +64,7 @@ def schedule_wakeup(bot, user_id, wake_time, hello_text_builder):
         when += timedelta(days=1)
 
     async def send():
-        # Отправляем приветствие
         await bot.send_message(user_id, hello_text_builder())
-        # Устанавливаем состояние на ожидание фокуса
         from storage import update_user
 
         update_user(user_id, {"state": "await_focus"})

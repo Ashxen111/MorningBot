@@ -13,7 +13,7 @@
     ],
     "reminder": "15:11",
     "wakeup": "10:00",
-    "state": "await_time",
+    "state": "await_focus",
     "lists": {
       "7cdb31c5-d867-428f-8349-23be54a4c5c5": {
         "tasks": [
